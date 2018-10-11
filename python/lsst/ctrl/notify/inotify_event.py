@@ -8,8 +8,10 @@ class _inotify_event(Structure):
 
 
 class inotify_event(_inotify_event):
-    name = None
-    def __init__(self, event=None):
+    def __init__(self, event=None, n=None):
         if event is not None:
-            self.__dict__.update(event.__dict__) 
-
+            self.wd = event.wd
+            self.mask = event.mask
+            self.cookie = event.cookie
+            self.length = event.length
+        self.name = n
