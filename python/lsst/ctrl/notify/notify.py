@@ -1,7 +1,13 @@
+import os
 from ctypes import *
 import ctypes.util
 from const import *
 
+class _event(Structure):
+    _fields_ = [('wd', c_int32),
+                ('mask', c_uint32),
+                ('cookie', c_uint32),
+                ('len', c_uint32)]
 
 class Notify(object):
 
@@ -18,21 +24,28 @@ class Notify(object):
         self.inotify_rm_watch = libc.inotify_rm_watch
         self.inotify_rm_watch.argtypes = [c_int, c_int]
 
-        self.d = self.inotify_init()
+        self.fd = self.inotify_init()
+        self.filebuf = os.fdopen(self.fd)
         self.paths = {}
 
     def read_event(self):
-        length = read(self.d, buf, EVENT_LEN)
+        event = _event()
+        val = self.filebuf.readinto(event)
+        name = self.filebuf.read(event.len)
+        print(name)
+        return event
 
     def add_watch(self, path, mask):
-        watch = self.inotify_add_watch(self.d, path, mask)
+        watch = self.inotify_add_watch(self.fd, path, mask)
         self.paths[path] = watch
 
     def rm_watch(self, path):
         watch = self.paths.pop(path)
-        self.inotify_rm_watch(self.d, watch)
+        self.inotify_rm_watch(self.fd, watch)
 
 if __name__ == "__main__":
 
     note = Notify()
     note.add_watch("/tmp", IN_CREATE)
+    event = note.read_event()
+    print(event.len)
