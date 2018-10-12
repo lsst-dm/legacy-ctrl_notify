@@ -1,13 +1,13 @@
 from ctypes import *
 
-class _inotify_event(Structure):
+class _InotifyEvent(Structure):
     _fields_ = [('wd', c_int32),
                 ('mask', c_uint32),
                 ('cookie', c_uint32),
                 ('length', c_uint32)]
 
 
-class inotify_event(_inotify_event):
+class InotifyEvent(_InotifyEvent):
     def __init__(self, event=None, n=None):
         if event is not None:
             self.wd = event.wd
