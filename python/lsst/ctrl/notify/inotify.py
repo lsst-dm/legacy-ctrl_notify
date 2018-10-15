@@ -47,12 +47,13 @@ class Inotify(object):
         event = _InotifyEvent()
         val = self.filebuf.readinto(event)
         name = self.filebuf.read(event.length)
-        ievent = InotifyEvent(event, name)
+        path = self.paths[event.wd]
+        ievent = InotifyEvent(event, os.path.join(path,name))
         return ievent
 
     def addWatch(self, path, mask):
         watch = self.inotify_add_watch(self.fd, path, mask)
-        self.paths[path] = watch
+        self.paths[watch] = path
 
     def rmWatch(self, path):
         watch = self.paths.pop(path)
@@ -61,10 +62,9 @@ class Inotify(object):
 if __name__ == "__main__":
 
     note = Inotify()
-    note.addWatch("/tmp", Inotify.IN_CREATE)
+    note.addWatch("/tmp/srp", Inotify.IN_CREATE)
+    note.addWatch("/tmp/srp2", Inotify.IN_CREATE)
     event = note.readEvent()
-    print(event.wd)
-    print(event.mask)
-    print(event.cookie)
-    print(event.length)
+    print(event.name)
+    event = note.readEvent()
     print(event.name)
