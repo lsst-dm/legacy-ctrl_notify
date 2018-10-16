@@ -7,7 +7,7 @@ class _InotifyEvent(Structure):
                 ('length', c_uint32)]
 
 
-class InotifyEvent(_InotifyEvent):
+class InotifyEvent(object):
     # Supported events suitable for MASK parameter of INOTIFY_ADD_WATCH.
     IN_ACCESS        = 0x00000001 # File was accessed.
     IN_MODIFY        = 0x00000002 # File was modified.
@@ -52,4 +52,12 @@ class InotifyEvent(_InotifyEvent):
             self.cookie = event.cookie
             self.length = event.length
         self.name = n
+
+    def __repr__(self):
+        d = dict(self.__dict__)
+        d['wd'] = self.wd
+        d['mask'] = self.mask
+        d['cookie'] = self.cookie
+        d['length'] = self.length
+        return ">>"+str(d)+"<<"
 
