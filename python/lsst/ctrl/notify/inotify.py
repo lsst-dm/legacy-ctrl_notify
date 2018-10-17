@@ -27,7 +27,8 @@ from inotifyEvent import _InotifyEvent, InotifyEvent
 class Inotify(object):
     """An interface to the inotify_* Linux system calls.
 
-    These are not exposed by the standard Python library, and do not exist in OS X.
+    These are not exposed by the standard Python library, and do not
+    exist in OS X.
 
     This library is intended to only be used on Linux systems.
     """
@@ -61,8 +62,13 @@ class Inotify(object):
         # dict of paths to watches
         self.watches = {}
 
-    def readEvent(self):
+    def readEvent(self, ignore=True):
         """Read the next inotify event. Blocks until event is received
+
+        Parameters
+        ----------
+        ignore : `bool`, optional
+            Should we read the event for IN_IGNORED on watch removal?
 
         Returns
         -------
@@ -72,9 +78,16 @@ class Inotify(object):
         
         event = _InotifyEvent()
         val = self.filebuf.readinto(event)
+
+        if ignore:
+            while event.mask == InotifyEvent.IN_IGNORED:
+                val = self.filebuf.readinto(event)
+
         ievent = None
-        # if the event.length is greater than zero, there's a name associated with this
-        # event, so it should be read.  If not, there's no name, so skip it.
+
+        # if the event.length is greater than zero, there's a name associated
+        # with this event, so it should be read.  If not, there's no name, so 
+        # skip it.
         if event.length > 0:
             name = self.filebuf.read(event.length)
             path = self.paths[event.wd]
@@ -97,28 +110,20 @@ class Inotify(object):
         self.paths[watch] = path
         self.watches[path] = watch
 
-    def rmWatch(self, path, ignore=True):
+    def rmWatch(self, path):
         """Add a inotify watch request for a path.
 
         Parameters
         ----------
         path : `str`
             The path to watch.  Can be a file or directory.
-        ignore : `bool`, optional
-            Should we read the event for IN_IGNORED on watch removal
         """
+
+        # TODO: remove only if path is in self.watches
         watch = self.watches.pop(path)
         ret = self.inotify_rm_watch(self.fd, watch)
-        if ignore:
-            #
-            # inotify_rm_watch ALWAYS generates a IN_IGNORED event on removal
-            # so that needs to be read too.
-            #
-            event = self.readEvent()
-            print("ignore done")
-            print(event)
-            p = self.paths.pop(watch)
-            print("removing ",watch,p)
+        # TODO: remove only if watch is in self.paths
+        p = self.paths.pop(watch)
         return ret
 
 if __name__ == "__main__":
