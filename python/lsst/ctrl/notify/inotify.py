@@ -20,6 +20,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import select
+
 from ctypes import *
 import ctypes.util
 from inotifyEvent import _InotifyEvent, InotifyEvent
@@ -34,6 +36,7 @@ class Inotify(object):
     """
 
     def __init__(self):
+        print("__init__ called")
         # initialize interfaces to the C library
         libcpath = ctypes.util.find_library("c")
         libc = cdll.LoadLibrary(libcpath)
@@ -62,41 +65,7 @@ class Inotify(object):
         # dict of paths to watches
         self.watches = {}
 
-    def readEvent(self, ignore=True):
-        """Read the next inotify event. Blocks until event is received
-
-        Parameters
-        ----------
-        ignore : `bool`, optional
-            Should we read the event for IN_IGNORED on watch removal?
-
-        Returns
-        -------
-        ievent : `InotifyEvent`
-            The InotifyEvent that occured.
-        """
-        
-        event = _InotifyEvent()
-        val = self.filebuf.readinto(event)
-
-        if ignore:
-            while event.mask == InotifyEvent.IN_IGNORED:
-                val = self.filebuf.readinto(event)
-
-        ievent = None
-
-        # if the event.length is greater than zero, there's a name associated
-        # with this event, so it should be read.  If not, there's no name, so 
-        # skip it.
-        if event.length > 0:
-            name = self.filebuf.read(event.length)
-            path = self.paths[event.wd]
-            ievent = InotifyEvent(event, os.path.join(path,name))
-        else:
-            ievent = InotifyEvent(event)
-        return ievent
-
-    def addWatch(self, path, mask):
+    def add_watch(self, path, mask):
         """Add a inotify watch request for a path.
 
         Parameters
@@ -107,36 +76,34 @@ class Inotify(object):
             The `InotifyEvent` mask value to watch.
         """
         watch = self.inotify_add_watch(self.fd, path, mask)
-        self.paths[watch] = path
-        self.watches[path] = watch
+        return watch
 
-    def rmWatch(self, path):
-        """Add a inotify watch request for a path.
+    def rm_watch(self, wd):
+        """Remove a inotify watch request for a path.
 
         Parameters
         ----------
-        path : `str`
-            The path to watch.  Can be a file or directory.
+        wd : `int`
+            watch descriptor to remove.
         """
 
-        # TODO: remove only if path is in self.watches
-        watch = self.watches.pop(path)
-        ret = self.inotify_rm_watch(self.fd, watch)
-        # TODO: remove only if watch is in self.paths
-        p = self.paths.pop(watch)
+        ret = self.inotify_rm_watch(self.fd, wd)
         return ret
+
 
 if __name__ == "__main__":
 
     note = Inotify()
-    note.addWatch("/tmp/srp", InotifyEvent.IN_CREATE)
-    note.addWatch("/tmp/srp2", InotifyEvent.IN_CREATE)
-    event = note.readEvent()
-    print(event.name)
-    event = note.readEvent()
-    print(event.name)
-    print("removed /tmp/srp watcher")
-    ret = note.rmWatch("/tmp/srp2")
-    print(ret)
-    event = note.readEvent()
-    print(event.name)
+
+    directory = "/tmp/srp"
+    wd = note.add_watch(directory, InotifyEvent.IN_CREATE)
+
+    try:
+        ret = note.rm_watch(wd)
+    except Exception as error:
+        print(error)
+
+    try:
+        ret = note.rm_watch(12345)
+    except Exception as error:
+        print(error)
