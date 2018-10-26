@@ -53,57 +53,21 @@ class Inotify(object):
         self.inotify_rm_watch = libc.inotify_rm_watch
         self.inotify_rm_watch.argtypes = [c_int, c_int]
 
-        #
-        # initialize the inotify interface
-        #
-        self.fd = self.inotify_init()
-        self.filebuf = os.fdopen(self.fd)
-
-        # dict of watches to paths
-        self.paths = {}
-
-        # dict of paths to watches
-        self.watches = {}
-
-    def add_watch(self, path, mask):
-        """Add a inotify watch request for a path.
-
-        Parameters
-        ----------
-        path : `str`
-            The path to watch.  Can be a file or directory.
-        mask : `int`
-            The `InotifyEvent` mask value to watch.
-        """
-        watch = self.inotify_add_watch(self.fd, path, mask)
-        return watch
-
-    def rm_watch(self, wd):
-        """Remove a inotify watch request for a path.
-
-        Parameters
-        ----------
-        wd : `int`
-            watch descriptor to remove.
-        """
-
-        ret = self.inotify_rm_watch(self.fd, wd)
-        return ret
-
-
 if __name__ == "__main__":
 
     note = Inotify()
 
+    fd = note.inotify_init()
+
     directory = "/tmp/srp"
-    wd = note.add_watch(directory, InotifyEvent.IN_CREATE)
+    wd = note.inotify_add_watch(fd, directory, InotifyEvent.IN_CREATE)
 
     try:
-        ret = note.rm_watch(wd)
+        ret = note.inotify_rm_watch(fd,wd)
     except Exception as error:
         print(error)
 
     try:
-        ret = note.rm_watch(12345)
+        ret = note.inotify_rm_watch(0, 12345)
     except Exception as error:
         print(error)

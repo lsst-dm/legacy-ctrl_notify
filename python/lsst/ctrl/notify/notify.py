@@ -7,6 +7,11 @@ class Notify(Inotify):
     def __init__(self):
         super(Notify, self).__init__()
 
+        self.fd = self.inotify_init()
+        self.filebuf = os.fdopen(self.fd)
+        self.paths = {}
+        self.watches = {}
+
 
     def readEvent(self, timeout=0):
         """Read the next inotify event. Blocks until event is received, unless
@@ -31,6 +36,8 @@ class Notify(Inotify):
         if len(rd) == 0:
             return None
         event = _InotifyEvent()
+        # read the header of the event; you have to read in this much in
+        # order to get the length of the name of the event.
         val = self.filebuf.readinto(event)
 
         ievent = None
@@ -56,7 +63,7 @@ class Notify(Inotify):
         mask : `int`
             The `InotifyEvent` mask value to watch.
         """
-        watch = self.add_watch(path, mask)
+        watch = self.inotify_add_watch(self.fd, path, mask)
         self.paths[watch] = path
         self.watches[path] = watch
 
@@ -73,7 +80,7 @@ class Notify(Inotify):
         ret = -1
         if self.watches.has_key(path):
             watch = self.watches.pop(path)
-            ret = self.rm_watch(watch)
+            ret = self.inotify_rm_watch(self.fd, watch)
         else:
             raise Exception("watch descriptor not found for that path")
 
