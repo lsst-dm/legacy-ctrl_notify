@@ -19,55 +19,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
-import select
-
 from ctypes import *
 import ctypes.util
-from inotifyEvent import _InotifyEvent, InotifyEvent
+from inotifyEvent import InotifyEvent
 
-class Inotify(object):
-    """An interface to the inotify_* Linux system calls.
+# initialize interfaces to the C library
+_libcpath = ctypes.util.find_library("c")
+_libc = cdll.LoadLibrary(_libcpath)
 
-    These are not exposed by the standard Python library, and do not
-    exist in OS X.
+# inotify_init system call
+inotify_init = _libc.inotify_init
+inotify_init.argtypes = []
 
-    This library is intended to only be used on Linux systems.
-    """
+# inotify_add_watch system call
+inotify_add_watch = _libc.inotify_add_watch
+inotify_add_watch.argtypes = [c_int, c_char_p, c_uint32]
 
-    def __init__(self):
-        print("__init__ called")
-        # initialize interfaces to the C library
-        libcpath = ctypes.util.find_library("c")
-        libc = cdll.LoadLibrary(libcpath)
-
-        # inotify_init system call
-        self.inotify_init = libc.inotify_init
-        self.inotify_init.argtypes = []
-
-        # inotify_add_watch system call
-        self.inotify_add_watch = libc.inotify_add_watch
-        self.inotify_add_watch.argtypes = [c_int, c_char_p, c_uint32]
-
-        # inotify_rm_watch system call
-        self.inotify_rm_watch = libc.inotify_rm_watch
-        self.inotify_rm_watch.argtypes = [c_int, c_int]
+# inotify_rm_watch system call
+inotify_rm_watch = _libc.inotify_rm_watch
+inotify_rm_watch.argtypes = [c_int, c_int]
 
 if __name__ == "__main__":
 
-    note = Inotify()
 
-    fd = note.inotify_init()
+    fd = inotify_init()
 
     directory = "/tmp/srp"
-    wd = note.inotify_add_watch(fd, directory, InotifyEvent.IN_CREATE)
+    wd = inotify_add_watch(fd, directory, InotifyEvent.IN_CREATE)
 
     try:
-        ret = note.inotify_rm_watch(fd,wd)
+        ret = inotify_rm_watch(fd,wd)
     except Exception as error:
         print(error)
 
     try:
-        ret = note.inotify_rm_watch(0, 12345)
+        ret = inotify_rm_watch(0, 12345)
     except Exception as error:
         print(error)

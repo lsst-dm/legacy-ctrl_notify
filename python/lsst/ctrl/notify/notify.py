@@ -1,13 +1,12 @@
+
 import os
 import select
-from inotify import Inotify
+from inotify import *
 from inotifyEvent import _InotifyEvent, InotifyEvent
 
-class Notify(Inotify):
+class Notify(object):
     def __init__(self):
-        super(Notify, self).__init__()
-
-        self.fd = self.inotify_init()
+        self.fd = inotify_init()
         self.filebuf = os.fdopen(self.fd)
         self.paths = {}
         self.watches = {}
@@ -63,7 +62,7 @@ class Notify(Inotify):
         mask : `int`
             The `InotifyEvent` mask value to watch.
         """
-        watch = self.inotify_add_watch(self.fd, path, mask)
+        watch = inotify_add_watch(self.fd, path, mask)
         self.paths[watch] = path
         self.watches[path] = watch
 
@@ -80,7 +79,7 @@ class Notify(Inotify):
         ret = -1
         if self.watches.has_key(path):
             watch = self.watches.pop(path)
-            ret = self.inotify_rm_watch(self.fd, watch)
+            ret = inotify_rm_watch(self.fd, watch)
         else:
             raise Exception("watch descriptor not found for that path")
 
