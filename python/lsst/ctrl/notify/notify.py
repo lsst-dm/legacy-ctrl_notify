@@ -1,8 +1,29 @@
+# This file is part of ctrl_notify.
+#
+# Developed for the LSST Data Management System.
+# This product includes software developed by the LSST Project
+# (http://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import select
-from lsst.ctrl.notify.inotify import *
+from lsst.ctrl.notify.inotify import inotify_init, inotify_add_watch, inotify_rm_watch
 from inotifyEvent import _InotifyEvent, InotifyEvent
+
 
 class Notify(object):
     def __init__(self):
@@ -10,7 +31,6 @@ class Notify(object):
         self.filebuf = os.fdopen(self.fd, "rb")
         self.paths = {}
         self.watches = {}
-
 
     def readEvent(self, timeout=0):
         """Read the next inotify event. Blocks until event is received, unless
@@ -28,7 +48,7 @@ class Notify(object):
             The InotifyEvent that occured.
         """
 
-        rd, wr, ed = select.select([self.fd],[], [], timeout)
+        rd, wr, ed = select.select([self.fd], [], [], timeout)
 
         # we're only reading, and one one inotify_init descriptor.  If
         # this comes back as zero, the timeout happened, and we return None.
@@ -38,17 +58,18 @@ class Notify(object):
         # read the header of the event; you have to read in this much in
         # order to get the length of the name of the event.
         val = self.filebuf.readinto(event)
+        if val == 0:
+            return None
 
         ievent = None
 
         # if the event.length is greater than zero, there's a name associated
-        # with this event, so it should be read.  If not, there's no name, so 
+        # with this event, so it should be read.  If not, there's no name, so
         # skip it.
         if event.length > 0:
             name = self.filebuf.read(event.length).decode('utf-8')
-            print(type(name))
             path = self.paths[event.wd]
-            ievent = InotifyEvent(event, os.path.join(path,name))
+            ievent = InotifyEvent(event, os.path.join(path, name))
         else:
             ievent = InotifyEvent(event)
         return ievent
@@ -87,7 +108,10 @@ class Notify(object):
         if watch is not None:
             if watch in self.paths:
                 p = self.paths.pop(watch)
+                if p is None:
+                    return -1
         return ret
+
 
 if __name__ == "__main__":
 
