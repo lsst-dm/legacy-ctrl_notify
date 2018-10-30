@@ -44,8 +44,8 @@ if __name__ == "__main__":
 
     fd = inotify_init()
 
-    directory = "/tmp/srp"
-    wd = inotify_add_watch(fd, directory, InotifyEvent.IN_CREATE)
+    directory = r"/tmp/srp"
+    wd = inotify_add_watch(fd, directory.encode('utf-8'), InotifyEvent.IN_CREATE)
 
     try:
         ret = inotify_rm_watch(fd,wd)
