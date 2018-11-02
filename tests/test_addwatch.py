@@ -24,33 +24,38 @@
 #
 
 import unittest
-import lsst.ctrl.notify as notify
+import lsst.ctrl.notify.notify as notify
+import lsst.ctrl.notify.inotifyEvent as inotifyEvent
 import lsst.utils.tests
 import tempfile
 import shutil
 
+
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 class AddWatchTestCase(lsst.utils.tests.TestCase):
     """Test adding files to watcher"""
 
+    def setUp(self):
+        self.note = notify.Notify()
+        self.dirPath = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.dirPath)
+        self.note.close()
+
     def testCreate(self):
-        direct = tempfile.mkdtemp()
 
-        note = notify.iNotify()
-        note.addWatch(path, IN_CREATE)
+        self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
 
-        (fh, filename) = tempfile.mkstemp(dir=path)
-        event = note.readEvent()
+        (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
+        event = self.note.readEvent()
 
-        self.assertEqual(event.mask, notify.InotifyEvent.IN_CREATE)
+        self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
         self.assertEqual(event.name, filename)
 
-        shutil.rmtree(direct)
-
-class Test1MemoryTester(lsst.utils.tests.MemoryTestCase):
-    pass
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

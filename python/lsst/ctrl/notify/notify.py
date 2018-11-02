@@ -22,7 +22,7 @@
 import os
 import select
 from lsst.ctrl.notify.inotify import inotify_init, inotify_add_watch, inotify_rm_watch
-from inotifyEvent import _InotifyEvent, InotifyEvent
+from lsst.ctrl.notify.inotifyEvent import _InotifyEvent, InotifyEvent
 
 
 class Notify(object):
@@ -67,7 +67,14 @@ class Notify(object):
         # with this event, so it should be read.  If not, there's no name, so
         # skip it.
         if event.length > 0:
-            name = self.filebuf.read(event.length).decode('utf-8')
+            # read the byte buffer and strip the trailing nulls
+            # NOTE: this is required because if you don't, the decode will
+            # will include the extra nulls are part of the string.  This
+            # doesn't show up when you print, but it will cause an
+            # assertEqual() to fail!
+            name = self.filebuf.read(event.length).partition(b'\0')[0]
+            # change this into a string
+            name = name.decode('utf-8')
             path = self.paths[event.wd]
             ievent = InotifyEvent(event, os.path.join(path, name))
         else:
@@ -111,6 +118,11 @@ class Notify(object):
                 if p is None:
                     return -1
         return ret
+
+    def close(self):
+        # NOTE: this closes the underlying self.fd
+        self.filebuf.close()
+        pass
 
 
 if __name__ == "__main__":

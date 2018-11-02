@@ -21,7 +21,7 @@
 
 from ctypes import c_int, c_char_p, c_uint32, cdll
 import ctypes.util
-from inotifyEvent import InotifyEvent
+from lsst.ctrl.notify.inotifyEvent import InotifyEvent
 
 # initialize interfaces to the C library
 _libcpath = ctypes.util.find_library("c")
