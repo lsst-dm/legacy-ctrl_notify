@@ -109,44 +109,16 @@ class Notify(object):
         if path in self.watches:
             watch = self.watches.pop(path)
             ret = inotify_rm_watch(self.fd, watch)
+            if ret != 0:
+                raise Exception("error removing watch descriptor")
         else:
             raise Exception("watch descriptor not found for that path")
 
         if watch is not None:
             if watch in self.paths:
-                p = self.paths.pop(watch)
-                if p is None:
-                    return -1
-        return ret
+                self.paths.pop(watch)
 
     def close(self):
         # NOTE: this closes the underlying self.fd
         self.filebuf.close()
         pass
-
-
-if __name__ == "__main__":
-
-    note = Notify()
-
-    note.addWatch("/tmp/srp", InotifyEvent.IN_CREATE)
-    note.addWatch("/tmp/srp2", InotifyEvent.IN_CREATE)
-
-    event = note.readEvent(timeout=5.0)
-    if event is not None:
-        print(event.name)
-    event = note.readEvent(timeout=5.0)
-    if event is not None:
-        print(event.name)
-    print("removed /tmp/srp watcher")
-    ret = note.rmWatch("/tmp/srp2")
-    event = note.readEvent(timeout=5.0)
-    if event is not None:
-        if event.mask == InotifyEvent.IN_IGNORED:
-            print("received IN_IGNORED event")
-        else:
-            print(event.name)
-    try:
-        ret = note.rmWatch(12345)
-    except Exception as error:
-        print(error)

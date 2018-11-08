@@ -59,11 +59,3 @@ class InotifyEvent(object):
             self.cookie = event.cookie
             self.length = event.length
         self.name = n
-
-    def __repr__(self):
-        d = dict(self.__dict__)
-        d['wd'] = self.wd
-        d['mask'] = self.mask
-        d['cookie'] = self.cookie
-        d['length'] = self.length
-        return ">>"+str(d)+"<<"

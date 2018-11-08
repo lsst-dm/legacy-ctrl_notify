@@ -21,7 +21,6 @@
 
 from ctypes import c_int, c_char_p, c_uint32, cdll
 import ctypes.util
-from lsst.ctrl.notify.inotifyEvent import InotifyEvent
 
 # initialize interfaces to the C library
 _libcpath = ctypes.util.find_library("c")
@@ -38,24 +37,3 @@ inotify_add_watch.argtypes = [c_int, c_char_p, c_uint32]
 # inotify_rm_watch system call
 inotify_rm_watch = _libc.inotify_rm_watch
 inotify_rm_watch.argtypes = [c_int, c_int]
-
-if __name__ == "__main__":
-
-    fd = inotify_init()
-
-    directory = r"/tmp/srp"
-    wd = inotify_add_watch(fd, directory.encode('utf-8'), InotifyEvent.IN_CREATE)
-
-    try:
-        ret = inotify_rm_watch(fd, wd)
-        if ret != 0:
-            print('ret is 0')
-    except Exception as error:
-        print(error)
-
-    try:
-        ret = inotify_rm_watch(0, 12345)
-        if ret == 0:
-            print('ret is 0')
-    except Exception as error:
-        print(error)

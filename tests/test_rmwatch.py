@@ -34,8 +34,8 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
-class AddWatchTestCase(lsst.utils.tests.TestCase):
-    """Test adding files to watcher"""
+class RemoveWatchTestCase(lsst.utils.tests.TestCase):
+    """Test removing watches"""
 
     def setUp(self):
         self.note = notify.Notify()
@@ -45,12 +45,18 @@ class AddWatchTestCase(lsst.utils.tests.TestCase):
         shutil.rmtree(self.dirPath)
         self.note.close()
 
-    def testCreate(self):
-
+    def testRemoveValidWatch(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
 
-        (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
-        event = self.note.readEvent()
+        event = self.note.readEvent(timeout=5.0)
+        self.assertIsNone(event)
 
-        self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
-        self.assertEqual(event.name, filename)
+        self.note.rmWatch(self.dirPath)
+        event = self.note.readEvent(timeout=5.0)
+
+        self.assertIsNotNone(event)
+
+        self.assertEqual(event.mask, inotifyEvent.IN_IGNORED)
+
+        with self.assertRaises(Exception):
+            self.note.rmWatch("/notapath")

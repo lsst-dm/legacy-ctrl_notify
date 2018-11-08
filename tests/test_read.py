@@ -34,7 +34,7 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
-class AddWatchTestCase(lsst.utils.tests.TestCase):
+class ReadTestCase(lsst.utils.tests.TestCase):
     """Test adding files to watcher"""
 
     def setUp(self):
@@ -45,12 +45,24 @@ class AddWatchTestCase(lsst.utils.tests.TestCase):
         shutil.rmtree(self.dirPath)
         self.note.close()
 
-    def testCreate(self):
-
+    def testRead(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
 
         (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
         event = self.note.readEvent()
+
+        self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
+        self.assertEqual(event.name, filename)
+
+    def testReadDelay(self):
+        self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
+
+        event = self.note.readEvent(timeout=3.0)
+
+        self.assertIsNone(event)
+
+        (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
+        event = self.note.readEvent(timeout=3.0)
 
         self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
         self.assertEqual(event.name, filename)
