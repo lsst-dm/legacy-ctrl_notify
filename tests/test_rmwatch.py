@@ -60,3 +60,10 @@ class RemoveWatchTestCase(lsst.utils.tests.TestCase):
 
         with self.assertRaises(Exception):
             self.note.rmWatch("/notapath")
+
+    def testRemoveInValidWatch(self):
+        self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
+
+        self.note.fd = -1
+        with self.assertRaises(Exception):
+            self.note.rmWatch(self.dirPath)

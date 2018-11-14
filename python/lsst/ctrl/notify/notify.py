@@ -55,11 +55,10 @@ class Notify(object):
         if len(rd) == 0:
             return None
         event = _InotifyEvent()
+
         # read the header of the event; you have to read in this much in
         # order to get the length of the name of the event.
-        val = self.filebuf.readinto(event)
-        if val == 0:
-            return None
+        self.filebuf.readinto(event)
 
         ievent = None
 
