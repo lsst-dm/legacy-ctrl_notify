@@ -53,9 +53,14 @@ class _InotifyEvent(Structure):
 
 class InotifyEvent(object):
     def __init__(self, event=None, n=None):
-        if event is not None:
+        self.name = n
+        if event is None:
+            self.wd = -1
+            self.mask = -1
+            self.cookie = -1
+            self.length = -1
+        else:
             self.wd = event.wd
             self.mask = event.mask
             self.cookie = event.cookie
             self.length = event.length
-        self.name = n

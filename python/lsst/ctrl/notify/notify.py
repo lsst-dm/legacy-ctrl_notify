@@ -113,8 +113,8 @@ class Notify(object):
         else:
             raise Exception("watch descriptor not found for that path")
 
-        if watch is not None:
-            if watch in self.paths:
+        if watch is not None:  # pragma: no branch
+            if watch in self.paths:  # pragma: no branch
                 self.paths.pop(watch)
 
     def close(self):
