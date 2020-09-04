@@ -31,6 +31,14 @@ class Notify(object):
         self.filebuf = os.fdopen(self.fd, "rb")
         self.paths = {}
         self.watches = {}
+        (self.r,self.w) = os.pipe()
+        self.exitRead = os.fdopen(self.r)
+        self.exitWrite = os.fdopen(self.w, 'w')
+
+
+    def cancelReadEvent(self):
+        self.exitWrite.write("cancel")
+        self.exitWrite.flush()
 
     def readEvent(self, timeout=None):
         """Read the next inotify event. Blocks until event is received, unless
@@ -47,14 +55,17 @@ class Notify(object):
         ievent : `InotifyEvent`
             The InotifyEvent that occured.
         """
+        
         if timeout is None:
-            rd, wr, ed = select.select([self.fd], [], [])
+            rd, wr, ed = select.select([self.fd, self.exitRead], [], [])
         else:
-            rd, wr, ed = select.select([self.fd], [], [], timeout)
+            rd, wr, ed = select.select([self.fd, self.exitRead], [], [], timeout)
 
         # we're only reading, and one one inotify_init descriptor.  If
         # this comes back as zero, the timeout happened, and we return None.
         if len(rd) == 0:
+            return None
+        if (len(rd) == 1) and (rd[0] == self.exitRead):
             return None
         event = _InotifyEvent()
 
