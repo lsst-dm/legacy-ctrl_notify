@@ -32,7 +32,7 @@ class Notify(object):
         self.paths = {}
         self.watches = {}
 
-    def readEvent(self, timeout=0):
+    def readEvent(self, timeout=None):
         """Read the next inotify event. Blocks until event is received, unless
         timeout is specified.
 
@@ -47,8 +47,10 @@ class Notify(object):
         ievent : `InotifyEvent`
             The InotifyEvent that occured.
         """
-
-        rd, wr, ed = select.select([self.fd], [], [], timeout)
+        if timeout is None:
+            rd, wr, ed = select.select([self.fd], [], [])
+        else:
+            rd, wr, ed = select.select([self.fd], [], [], timeout)
 
         # we're only reading, and one one inotify_init descriptor.  If
         # this comes back as zero, the timeout happened, and we return None.
