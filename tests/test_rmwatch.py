@@ -43,7 +43,6 @@ class RemoveWatchTestCase(lsst.utils.tests.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.dirPath)
-        self.note.close()
 
     def testRemoveValidWatch(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
@@ -60,9 +59,11 @@ class RemoveWatchTestCase(lsst.utils.tests.TestCase):
 
         with self.assertRaises(Exception):
             self.note.rmWatch("/notapath")
+        self.note.close()
 
     def testRemoveInValidWatch(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
+        self.note.close()
 
         self.note.fd = -1
         with self.assertRaises(Exception):

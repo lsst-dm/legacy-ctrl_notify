@@ -31,10 +31,9 @@ class Notify(object):
         self.filebuf = os.fdopen(self.fd, "rb")
         self.paths = {}
         self.watches = {}
-        (self.r,self.w) = os.pipe()
+        (self.r, self.w) = os.pipe()
         self.exitRead = os.fdopen(self.r)
         self.exitWrite = os.fdopen(self.w, 'w')
-
 
     def cancelReadEvent(self):
         self.exitWrite.write("cancel")
@@ -55,7 +54,7 @@ class Notify(object):
         ievent : `InotifyEvent`
             The InotifyEvent that occured.
         """
-        
+
         if timeout is None:
             rd, wr, ed = select.select([self.fd, self.exitRead], [], [])
         else:
@@ -131,6 +130,6 @@ class Notify(object):
                 self.paths.pop(watch)
 
     def close(self):
-        # NOTE: this closes the underlying self.fd
+        self.exitRead.close()
+        self.exitWrite.close()
         self.filebuf.close()
-        pass
