@@ -26,45 +26,43 @@
 import lsst.ctrl.notify.notify as notify
 import lsst.ctrl.notify.inotifyEvent as inotifyEvent
 import lsst.utils.tests
-import tempfile
+import os
 import shutil
+import tempfile
 
 
 def setup_module(module):
     lsst.utils.tests.init()
 
 
-class RemoveWatchTestCase(lsst.utils.tests.TestCase):
-    """Test removing watches"""
+class CloseWriteTestCase(lsst.utils.tests.TestCase):
+    """Test adding files to watcher"""
 
     def setUp(self):
         self.note = notify.Notify()
         self.dirPath = tempfile.mkdtemp()
+        self.newFilePath = tempfile.mkdtemp()
+        (fh, self.filename) = tempfile.mkstemp(dir=self.newFilePath)
+        with os.fdopen(fh, "w") as tmp:
+            tmp.write("test")
 
     def tearDown(self):
         shutil.rmtree(self.dirPath)
+        self.note.close()
 
-    def testRemoveValidWatch(self):
-        self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
+    def testCloseWrite(self):
+        self.note.addWatch(self.dirPath, inotifyEvent.IN_CLOSE_WRITE)
 
-        event = self.note.readEvent(timeout=5.0)
+        event = self.note.readEvent(timeout=3.0)
+
         self.assertIsNone(event)
 
-        self.note.rmWatch(self.dirPath)
-        event = self.note.readEvent(timeout=5.0)
+        os.system(f"cp {self.filename} {self.dirPath}")
+
+        event = self.note.readEvent(timeout=3.0)
 
         self.assertIsNotNone(event)
+        self.assertEqual(event.mask, inotifyEvent.IN_CLOSE_WRITE)
 
-        self.assertEqual(event.mask, inotifyEvent.IN_IGNORED)
-
-        with self.assertRaises(KeyError):
-            self.note.rmWatch("/notapath")
-        self.note.close()
-
-    def testRemoveInValidWatch(self):
-        self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
-        self.note.close()
-
-        self.note.fd = -1
-        ret = self.note.rmWatch(self.dirPath)
-        self.assertEqual(ret, -1)
+        event = self.note.readEvent(timeout=3.0)
+        self.assertIsNone(event)

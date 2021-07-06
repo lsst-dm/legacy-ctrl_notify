@@ -64,3 +64,6 @@ class InotifyEvent(object):
             self.mask = event.mask
             self.cookie = event.cookie
             self.length = event.length
+
+    def __str__(self):
+        return f"wd = {self.wd}, mask = {self.mask}, cookie = {self.cookie}, length = {self.length}"

@@ -115,19 +115,10 @@ class Notify(object):
             The path to watch.  Can be a file or directory.
         """
 
-        watch = None
-        ret = -1
-        if path in self.watches:
-            watch = self.watches.pop(path)
-            ret = inotify_rm_watch(self.fd, watch)
-            if ret != 0:
-                raise Exception("error removing watch descriptor")
-        else:
-            raise Exception("watch descriptor not found for that path")
-
-        if watch is not None:  # pragma: no branch
-            if watch in self.paths:  # pragma: no branch
-                self.paths.pop(watch)
+        watch = self.watches.pop(path)
+        self.paths.pop(watch)
+        ret = inotify_rm_watch(self.fd, watch)
+        return ret
 
     def close(self):
         self.exitRead.close()
