@@ -41,10 +41,6 @@ class CloseWriteTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
         self.note = notify.Notify()
         self.dirPath = tempfile.mkdtemp()
-        self.newFilePath = tempfile.mkdtemp()
-        (fh, self.filename) = tempfile.mkstemp(dir=self.newFilePath)
-        with os.fdopen(fh, "w") as tmp:
-            tmp.write("test")
 
     def tearDown(self):
         shutil.rmtree(self.dirPath)
@@ -53,11 +49,35 @@ class CloseWriteTestCase(lsst.utils.tests.TestCase):
     def testCloseWrite(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CLOSE_WRITE)
 
+        (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
+        with os.fdopen(fh, "w") as tmp:
+            tmp.write("test")
+            # file has been written to, but not yet closed, so check
+            # to be sure we haven't gotten an event.
+            event = self.note.readEvent(timeout=3.0)
+            self.assertIsNone(event)
+
+        # file is now closed, so event should be there
+        event = self.note.readEvent(timeout=3.0)
+        self.assertIsNotNone(event)
+        self.assertEqual(event.mask, inotifyEvent.IN_CLOSE_WRITE)
+
+        event = self.note.readEvent(timeout=3.0)
+        self.assertIsNone(event)
+
+    def testCloseWriteCopy(self):
+        self.note.addWatch(self.dirPath, inotifyEvent.IN_CLOSE_WRITE)
+
+        newFilePath = tempfile.mkdtemp()
+        (fh, filename) = tempfile.mkstemp(dir=newFilePath)
+        with os.fdopen(fh, "w") as tmp:
+            tmp.write("test")
+
         event = self.note.readEvent(timeout=3.0)
 
         self.assertIsNone(event)
 
-        os.system(f"cp {self.filename} {self.dirPath}")
+        os.system(f"cp {filename} {self.dirPath}")
 
         event = self.note.readEvent(timeout=3.0)
 
