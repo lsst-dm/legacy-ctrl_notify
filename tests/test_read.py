@@ -23,6 +23,8 @@
 # see <https://www.lsstcorp.org/LegalNotices/>.
 #
 
+import asynctest
+
 import lsst.ctrl.notify.notify as notify
 import lsst.ctrl.notify.inotifyEvent as inotifyEvent
 import lsst.utils.tests
@@ -34,7 +36,7 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
-class ReadTestCase(lsst.utils.tests.TestCase):
+class ReadTestCase(asynctest.TestCase):
     """Test adding files to watcher"""
 
     def setUp(self):
@@ -45,24 +47,24 @@ class ReadTestCase(lsst.utils.tests.TestCase):
         shutil.rmtree(self.dirPath)
         self.note.close()
 
-    def testRead(self):
+    async def testRead(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
 
         (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
-        event = self.note.readEvent()
+        event = await self.note.readEvent()
 
         self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
         self.assertEqual(event.name, filename)
 
-    def testReadDelay(self):
+    async def testReadDelay(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
 
-        event = self.note.readEvent(timeout=3.0)
+        event = await self.note.readEvent(timeout=3.0)
 
         self.assertIsNone(event)
 
         (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
-        event = self.note.readEvent(timeout=3.0)
+        event = await self.note.readEvent(timeout=3.0)
 
         self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
         self.assertEqual(event.name, filename)

@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
 import os
 import select
 from lsst.ctrl.notify.inotify import inotify_init, inotify_add_watch, inotify_rm_watch
@@ -39,7 +40,7 @@ class Notify(object):
         self.exitWrite.write("cancel")
         self.exitWrite.flush()
 
-    def readEvent(self, timeout=None):
+    async def readEvent(self, timeout=None):
         """Read the next inotify event. Blocks until event is received, unless
         timeout is specified.
 
@@ -55,10 +56,13 @@ class Notify(object):
             The InotifyEvent that occured.
         """
 
+        loop = asyncio.get_event_loop()
+
         if timeout is None:
-            rd, wr, ed = select.select([self.fd, self.exitRead], [], [])
+            rd, wr, ed = await loop.run_in_executor(None, select.select, [self.fd, self.exitRead], [], [])
         else:
-            rd, wr, ed = select.select([self.fd, self.exitRead], [], [], timeout)
+            rd, wr, ed = await loop.run_in_executor(None, select.select,
+                                                    [self.fd, self.exitRead], [], [], timeout)
 
         # we're only reading, and one one inotify_init descriptor.  If
         # this comes back as zero, the timeout happened, and we return None.

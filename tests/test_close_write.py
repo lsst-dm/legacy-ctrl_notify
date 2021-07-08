@@ -23,6 +23,7 @@
 # see <https://www.lsstcorp.org/LegalNotices/>.
 #
 
+import asynctest
 import lsst.ctrl.notify.notify as notify
 import lsst.ctrl.notify.inotifyEvent as inotifyEvent
 import lsst.utils.tests
@@ -35,7 +36,7 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
-class CloseWriteTestCase(lsst.utils.tests.TestCase):
+class CloseWriteTestCase(asynctest.TestCase):
     """Test adding files to watcher"""
 
     def setUp(self):
@@ -46,7 +47,7 @@ class CloseWriteTestCase(lsst.utils.tests.TestCase):
         shutil.rmtree(self.dirPath)
         self.note.close()
 
-    def testCloseWrite(self):
+    async def testCloseWrite(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CLOSE_WRITE)
 
         (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
@@ -54,18 +55,18 @@ class CloseWriteTestCase(lsst.utils.tests.TestCase):
             tmp.write("test")
             # file has been written to, but not yet closed, so check
             # to be sure we haven't gotten an event.
-            event = self.note.readEvent(timeout=3.0)
+            event = await self.note.readEvent(timeout=3.0)
             self.assertIsNone(event)
 
         # file is now closed, so event should be there
-        event = self.note.readEvent(timeout=3.0)
+        event = await self.note.readEvent(timeout=3.0)
         self.assertIsNotNone(event)
         self.assertEqual(event.mask, inotifyEvent.IN_CLOSE_WRITE)
 
-        event = self.note.readEvent(timeout=3.0)
+        event = await self.note.readEvent(timeout=3.0)
         self.assertIsNone(event)
 
-    def testCloseWriteCopy(self):
+    async def testCloseWriteCopy(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CLOSE_WRITE)
 
         newFilePath = tempfile.mkdtemp()
@@ -73,16 +74,16 @@ class CloseWriteTestCase(lsst.utils.tests.TestCase):
         with os.fdopen(fh, "w") as tmp:
             tmp.write("test")
 
-        event = self.note.readEvent(timeout=3.0)
+        event = await self.note.readEvent(timeout=3.0)
 
         self.assertIsNone(event)
 
         os.system(f"cp {filename} {self.dirPath}")
 
-        event = self.note.readEvent(timeout=3.0)
+        event = await self.note.readEvent(timeout=3.0)
 
         self.assertIsNotNone(event)
         self.assertEqual(event.mask, inotifyEvent.IN_CLOSE_WRITE)
 
-        event = self.note.readEvent(timeout=3.0)
+        event = await self.note.readEvent(timeout=3.0)
         self.assertIsNone(event)
