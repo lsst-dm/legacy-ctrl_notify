@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
 import os
 import select
 from lsst.ctrl.notify.inotify import inotify_init, inotify_add_watch, inotify_rm_watch
@@ -31,8 +32,15 @@ class Notify(object):
         self.filebuf = os.fdopen(self.fd, "rb")
         self.paths = {}
         self.watches = {}
+        (self.r, self.w) = os.pipe()
+        self.exitRead = os.fdopen(self.r)
+        self.exitWrite = os.fdopen(self.w, 'w')
 
-    def readEvent(self, timeout=0):
+    def cancelReadEvent(self):
+        self.exitWrite.write("cancel")
+        self.exitWrite.flush()
+
+    async def readEvent(self, timeout=None):
         """Read the next inotify event. Blocks until event is received, unless
         timeout is specified.
 
@@ -48,11 +56,19 @@ class Notify(object):
             The InotifyEvent that occured.
         """
 
-        rd, wr, ed = select.select([self.fd], [], [], timeout)
+        loop = asyncio.get_event_loop()
+
+        if timeout is None:
+            rd, wr, ed = await loop.run_in_executor(None, select.select, [self.fd, self.exitRead], [], [])
+        else:
+            rd, wr, ed = await loop.run_in_executor(None, select.select,
+                                                    [self.fd, self.exitRead], [], [], timeout)
 
         # we're only reading, and one one inotify_init descriptor.  If
         # this comes back as zero, the timeout happened, and we return None.
         if len(rd) == 0:
+            return None
+        if (len(rd) == 1) and (rd[0] == self.exitRead):
             return None
         event = _InotifyEvent()
 
@@ -103,21 +119,12 @@ class Notify(object):
             The path to watch.  Can be a file or directory.
         """
 
-        watch = None
-        ret = -1
-        if path in self.watches:
-            watch = self.watches.pop(path)
-            ret = inotify_rm_watch(self.fd, watch)
-            if ret != 0:
-                raise Exception("error removing watch descriptor")
-        else:
-            raise Exception("watch descriptor not found for that path")
-
-        if watch is not None:  # pragma: no branch
-            if watch in self.paths:  # pragma: no branch
-                self.paths.pop(watch)
+        watch = self.watches.pop(path)
+        self.paths.pop(watch)
+        ret = inotify_rm_watch(self.fd, watch)
+        return ret
 
     def close(self):
-        # NOTE: this closes the underlying self.fd
+        self.exitRead.close()
+        self.exitWrite.close()
         self.filebuf.close()
-        pass

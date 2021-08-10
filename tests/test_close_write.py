@@ -24,19 +24,19 @@
 #
 
 import asynctest
-
 import lsst.ctrl.notify.notify as notify
 import lsst.ctrl.notify.inotifyEvent as inotifyEvent
 import lsst.utils.tests
-import tempfile
+import os
 import shutil
+import tempfile
 
 
 def setup_module(module):
     lsst.utils.tests.init()
 
 
-class ReadTestCase(asynctest.TestCase):
+class CloseWriteTestCase(asynctest.TestCase):
     """Test adding files to watcher"""
 
     def setUp(self):
@@ -47,24 +47,43 @@ class ReadTestCase(asynctest.TestCase):
         shutil.rmtree(self.dirPath)
         self.note.close()
 
-    async def testRead(self):
-        self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
+    async def testCloseWrite(self):
+        self.note.addWatch(self.dirPath, inotifyEvent.IN_CLOSE_WRITE)
 
         (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
-        event = await self.note.readEvent()
+        with os.fdopen(fh, "w") as tmp:
+            tmp.write("test")
+            # file has been written to, but not yet closed, so check
+            # to be sure we haven't gotten an event.
+            event = await self.note.readEvent(timeout=3.0)
+            self.assertIsNone(event)
 
-        self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
-        self.assertEqual(event.name, filename)
+        # file is now closed, so event should be there
+        event = await self.note.readEvent(timeout=3.0)
+        self.assertIsNotNone(event)
+        self.assertEqual(event.mask, inotifyEvent.IN_CLOSE_WRITE)
 
-    async def testReadDelay(self):
-        self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
+        event = await self.note.readEvent(timeout=3.0)
+        self.assertIsNone(event)
+
+    async def testCloseWriteCopy(self):
+        self.note.addWatch(self.dirPath, inotifyEvent.IN_CLOSE_WRITE)
+
+        newFilePath = tempfile.mkdtemp()
+        (fh, filename) = tempfile.mkstemp(dir=newFilePath)
+        with os.fdopen(fh, "w") as tmp:
+            tmp.write("test")
 
         event = await self.note.readEvent(timeout=3.0)
 
         self.assertIsNone(event)
 
-        (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
+        os.system(f"cp {filename} {self.dirPath}")
+
         event = await self.note.readEvent(timeout=3.0)
 
-        self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
-        self.assertEqual(event.name, filename)
+        self.assertIsNotNone(event)
+        self.assertEqual(event.mask, inotifyEvent.IN_CLOSE_WRITE)
+
+        event = await self.note.readEvent(timeout=3.0)
+        self.assertIsNone(event)

@@ -23,6 +23,7 @@
 # see <https://www.lsstcorp.org/LegalNotices/>.
 #
 
+import asynctest
 import lsst.ctrl.notify.notify as notify
 import lsst.ctrl.notify.inotifyEvent as inotifyEvent
 import lsst.utils.tests
@@ -34,7 +35,7 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
-class RemoveWatchTestCase(lsst.utils.tests.TestCase):
+class RemoveWatchTestCase(asynctest.TestCase):
     """Test removing watches"""
 
     def setUp(self):
@@ -43,27 +44,28 @@ class RemoveWatchTestCase(lsst.utils.tests.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.dirPath)
-        self.note.close()
 
-    def testRemoveValidWatch(self):
+    async def testRemoveValidWatch(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
 
-        event = self.note.readEvent(timeout=5.0)
+        event = await self.note.readEvent(timeout=5.0)
         self.assertIsNone(event)
 
         self.note.rmWatch(self.dirPath)
-        event = self.note.readEvent(timeout=5.0)
+        event = await self.note.readEvent(timeout=5.0)
 
         self.assertIsNotNone(event)
 
         self.assertEqual(event.mask, inotifyEvent.IN_IGNORED)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(KeyError):
             self.note.rmWatch("/notapath")
+        self.note.close()
 
     def testRemoveInValidWatch(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
+        self.note.close()
 
         self.note.fd = -1
-        with self.assertRaises(Exception):
-            self.note.rmWatch(self.dirPath)
+        ret = self.note.rmWatch(self.dirPath)
+        self.assertEqual(ret, -1)

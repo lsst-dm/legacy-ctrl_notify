@@ -23,9 +23,11 @@
 # see <https://www.lsstcorp.org/LegalNotices/>.
 #
 
+import asynctest
 import lsst.ctrl.notify.notify as notify
 import lsst.ctrl.notify.inotifyEvent as inotifyEvent
 import lsst.utils.tests
+import os
 import tempfile
 import shutil
 
@@ -34,7 +36,7 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
-class InotifyEventTestCase(lsst.utils.tests.TestCase):
+class InotifyEventTestCase(asynctest.TestCase):
     """Test InotifyEvent"""
 
     def setUp(self):
@@ -45,14 +47,46 @@ class InotifyEventTestCase(lsst.utils.tests.TestCase):
         shutil.rmtree(self.dirPath)
         self.note.close()
 
-    def testInotifyEvent(self):
+    async def testInotifyEvent(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
 
         (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
-        event = self.note.readEvent()
+        event = await self.note.readEvent(0)
 
         self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
         self.assertEqual(event.name, filename)
+        self.assertNotEqual(event.cookie, -1)
+        self.assertNotEqual(event.length, -1)
+
+    async def testSubdirectory(self):
+        self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
+
+        path1 = os.path.join(self.dirPath, str(os.getpid()))
+        os.makedirs(path1)
+        event = await self.note.readEvent(0)
+        self.assertEqual(event.name, path1)
+
+        (fh, filename) = tempfile.mkstemp(dir=path1)
+        event = await self.note.readEvent(0)
+        self.assertIsNone(event)
+
+        self.note.addWatch(path1, inotifyEvent.IN_CREATE)
+
+        (fh, filename) = tempfile.mkstemp(dir=path1)
+        event = await self.note.readEvent(0)
+        self.assertEqual(event.name, filename)
+
+    async def testWritingClosed(self):
+        self.note.addWatch(self.dirPath, inotifyEvent.IN_CLOSE_WRITE)
+
+        path = os.path.join(self.dirPath, str(os.getpid()))
+        f = open(path, "w")
+        f.write("Hi there")
+        event = await self.note.readEvent(0)
+        self.assertIsNone(event)
+        f.close()
+        event = await self.note.readEvent(0)
+        self.assertEqual(event.name, path)
         self.assertNotEqual(event.cookie, -1)
         self.assertNotEqual(event.length, -1)
 

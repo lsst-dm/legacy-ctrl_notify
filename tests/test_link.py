@@ -27,15 +27,16 @@ import asynctest
 import lsst.ctrl.notify.notify as notify
 import lsst.ctrl.notify.inotifyEvent as inotifyEvent
 import lsst.utils.tests
-import tempfile
+import os
 import shutil
+import tempfile
 
 
 def setup_module(module):
     lsst.utils.tests.init()
 
 
-class AddWatchTestCase(asynctest.TestCase):
+class LinkTestCase(asynctest.TestCase):
     """Test adding files to watcher"""
 
     def setUp(self):
@@ -46,12 +47,23 @@ class AddWatchTestCase(asynctest.TestCase):
         shutil.rmtree(self.dirPath)
         self.note.close()
 
-    async def testCreate(self):
-
+    async def testInCreateLink(self):
         self.note.addWatch(self.dirPath, inotifyEvent.IN_CREATE)
 
-        (fh, filename) = tempfile.mkstemp(dir=self.dirPath)
-        event = await self.note.readEvent()
+        newFilePath = tempfile.mkdtemp()
+        (fh, filename) = tempfile.mkstemp(dir=newFilePath)
+        with os.fdopen(fh, "w") as tmp:
+            tmp.write("test")
 
+        event = await self.note.readEvent(timeout=3.0)
+        self.assertIsNone(event)
+
+        os.link(filename, os.path.join(self.dirPath, os.path.basename(filename)))
+
+        event = await self.note.readEvent(timeout=3.0)
+
+        self.assertIsNotNone(event)
         self.assertEqual(event.mask, inotifyEvent.IN_CREATE)
-        self.assertEqual(event.name, filename)
+
+        event = await self.note.readEvent(timeout=3.0)
+        self.assertIsNone(event)
